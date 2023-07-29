@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <title>Talk Code!</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat With Strangers</title>
+  <link rel="icon" type="image/x-icon" href="public/logo.png" />
+
+  <link rel="stylesheet" type="text/css" href="/public/index.css" />
+ </head>
+ <body>
+  <div
+   class="users_online"
+   style="position: absolute; top: 2%; right: 3%"
+  ></div>
+  <div class="chat">
+   <div class="chat-details">
+    <img class="logo_details" src="public/logo.png" />
+   </div>
+   <div id="chat-box"></div>
+   <div id="chat-form">
+    <button type="text" class="end-chat">End chat</button>
+    <input
+     type="text"
+     id="message-input"
+     required
+     placeholder="Type something here...."
+    />
+   </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+   const socket = io()
+   const endChat = document.querySelector(".end-chat")
+   const chatBox = document.getElementById("chat-box")
+   const messageInput = document.getElementById("message-input")
+   let room
+   socket.on("waitMessage", (message) => {
+    const partnerMessage = document.createElement("div")
+    partnerMessage.classList.add("wait_message")
+    partnerMessage.textContent = `Waiting for a stranger.`
+    chatBox.appendChild(partnerMessage)
+   })
+   socket.on("users_online", (users_online) => {
+    document.querySelector(
+     ".users_online"
+    ).innerHTML = `<span style="display:flex;flex-direction:row;gap:2px" ><img height="20px" width="20px" src="public/online.png"><span>${users_online}</span></span>`
+   })
+   socket.on(
+    "partnerConnected",
+    (partnerUsername, roomName, username, userId) => {
+     // to clear waiting message
+
+     if (chatBox.childNodes) {
+      chatBox.innerHTML = ""
+     }
+     room = roomName
+
+     const partnerMessage = document.createElement("div")
+     partnerMessage.classList.add("connected_status")
+     partnerMessage.innerHTML = `<span class="green_signal">You are now connected with ${partnerUsername}</span>`
+     chatBox.appendChild(partnerMessage)
+
+     messageInput.addEventListener("keydown", (event) => {
+      console.log(event)
+      if (event.key == "Enter") {
+       console.log("emter")
+       if (document.querySelector(".type")) {
+        document.querySelector(".type").remove()
+       }
+       const message = messageInput.value.trim()
+       if (message !== "") {
+        socket.emit("chatMessage", { message, room, username, userId })
+        const newMessage = document.createElement("div")
+        newMessage.classList.add("mymessage")
+        let myMessage = message
+        newMessage.innerHTML = `
+      <span   class="myMessageBody" style="background:#0084ff;font-size:16px; padding:8px 12px;border-radius:10px">${myMessage}</span>
+      `
+        chatBox.appendChild(newMessage)
+        messageInput.value = ""
+       }
+      } else {
+       let message = "stranger is typing"
+       console.log(message)
+       let data = { message, room, username, userId }
+       socket.emit("typing", data)
+      }
+     })
+
+     endChat.addEventListener("click", () => {
+      window.location.reload()
+     })
+
+     socket.on("texting", (data) => {
+      if (document.querySelector(".type")) {
+       document.querySelector(".type").remove()
+      }
+      const typing = document.createElement("div")
+      typing.classList.add("type")
+      typing.textContent = `${data.message}`
+      chatBox.appendChild(typing)
+     })
+
+     socket.on("chatMessage", (data) => {
+      let typingmeesage = document.querySelector(".type")
+      if (document.querySelector(".type")) {
+       document.querySelector(".type").remove()
+      }
+      const { message, room, username } = data
+      const newMessage = document.createElement("div")
+      newMessage.classList.add("strangermessage")
+      const time = new Date().toLocaleTimeString()
+      let strangerMessage = message
+      newMessage.innerHTML = `
+      
+      <span  class="strangerMessageBody"  style="background:black;color:white;font-size:16px; padding:8px 12px;border-radius:10px;">${strangerMessage}</span>
+      `
+
+      chatBox.appendChild(newMessage)
+     })
+
+     socket.on("userDisconnected", (partnerUsername) => {
+      disabled = true
+      const userLeftMessage = document.createElement("div")
+      userLeftMessage.textContent = `${partnerUsername} has left the chat.`
+      chatBox.appendChild(userLeftMessage)
+      endChat.innerHTML = "NEW CHAT"
+      endChat.style.backgroundColor = "#0084ff"
+      endChat.style.color = "white"
+     })
+    }
+   )
+  </script>
+ </body>
+</html>
